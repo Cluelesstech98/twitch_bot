@@ -17,7 +17,7 @@ async function handleIQ(username) {
         const oldIQ = await database.getUserIQ(username);
         const newIQ = Math.floor(Math.random() * 250) + 1;
         
-        let message = `Ваш IQ = ${newIQ} запомнил `;
+        let message = ` запомнил Ваш IQ = ${newIQ}`;
         if (oldIQ !== null && oldIQ !== undefined) {
             const diff = newIQ - oldIQ;
             message += ` (${diff >= 0 ? '+' : ''}${diff})`;
