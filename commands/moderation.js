@@ -88,8 +88,8 @@ module.exports = {
                 capsWarnings.set(username, newWarnings);
                 
                 const warningsText = [
-                    `Не капси (${newWarnings}/2) @${username}`,
-                    `Ещё раз говорю, не капси! (${newWarnings}/2) @${username}`
+                    ` тревога Не капси (${newWarnings}/2) @${username}`,
+                    ` тревога Ещё раз говорю, не капси! (${newWarnings}/2) @${username}`
                 ];
                 return { warning: warningsText[warnings] };
             }
@@ -120,19 +120,19 @@ module.exports = {
                     return { 
                         timeout: true, 
                         duration: 0, // пермач
-                        reason: 'СПАМ (3/3)' 
+                        reason: ' ч СПАМ (3/3)' 
                     };
                 } else if (spamCount === 2) {
                     return { 
                         timeout: true, 
                         duration: 600, 
-                        reason: 'всё ещё спамишь? (2/3)' 
+                        reason: ' ч всё ещё спамишь? (2/3)' 
                     };
                 } else {
                     return { 
                         timeout: true, 
                         duration: 300, 
-                        reason: 'не спамь больше (1/3)' 
+                        reason: ' ч не спамь больше (1/3)' 
                     };
                 }
             }
@@ -148,9 +148,9 @@ module.exports = {
         warnCache.set(username, warnings);
         
         if (warnings === 1) {
-            return `Аккуратнее с выражениями, пожалуйста @${username}`;
+            return ` ч Аккуратнее с выражениями, пожалуйста @${username}`;
         } else if (warnings === 2) {
-            return `Повторяю последний раз, без глупостей @${username}`;
+            return ` ч Повторяю последний раз, без глупостей @${username}`;
         } else {
             warnCache.del(username);
             return `!timeout @${username} 600`;

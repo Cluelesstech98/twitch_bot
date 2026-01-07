@@ -48,7 +48,7 @@ client.on('message', async (channel, tags, message, self) => {
         if (spamResult.timeout) {
             await moderation.handleTimeout(client, channel, username, spamResult.duration, spamResult.reason);
         } else {
-            client.say(channel, `Повторение - мать учения, но ты тоже не наглей @${username}`);
+            client.say(channel, ` хмм Повторение - мать учения, но ты тоже не наглей @${username}`);
         }
     }
 

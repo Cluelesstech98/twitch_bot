@@ -17,7 +17,7 @@ async function handleIQ(username) {
         const oldIQ = await database.getUserIQ(username);
         const newIQ = Math.floor(Math.random() * 250) + 1;
         
-        let message = `Ваш IQ = ${newIQ}`;
+        let message = `Ваш IQ = ${newIQ} запомнил `;
         if (oldIQ !== null && oldIQ !== undefined) {
             const diff = newIQ - oldIQ;
             message += ` (${diff >= 0 ? '+' : ''}${diff})`;
@@ -27,7 +27,7 @@ async function handleIQ(username) {
         return message;
     } catch (error) {
         console.error('Ошибка в handleIQ:', error);
-        return 'Произошла ошибка при расчете IQ';
+        return 'Произошла ошибка при расчете IQ  погоди ';
     }
 }
 
@@ -37,19 +37,19 @@ async function handleGame() {
         const currentGame = await getCurrentGame(CHANNEL_NAME);
         
         if (!currentGame) {
-            return 'Не удалось получить информацию об игре';
+            return 'Не удалось получить информацию об игре погоди ';
         }
         
         // Проверка на категорию "Общение"
         const lowerGame = currentGame.toLowerCase();
         if (lowerGame.includes('just chatting') || lowerGame.includes('общение')) {
-            return 'Пока не играем';
+            return 'Пока не играем вообще-то ';
         }
         
-        return `Сейчас играем в ${currentGame}`;
+        return `Сейчас играем в ${currentGame} опа `;
     } catch (error) {
         console.error('Ошибка в handleGame:', error);
-        return 'Не удалось получить информацию об игре';
+        return 'Не удалось получить информацию об игре погоди ';
     }
 }
 
@@ -100,7 +100,7 @@ async function handleFollowage(tags, isBroadcaster, isMod) {
             });
             
             if (!channelResponse.data.data || channelResponse.data.data.length === 0) {
-                console.error('Канал не найден в API');
+                console.error('Канал не найден в API погоди ');
                 return fallbackFollowageResponse(isVip, isMod);
             }
             
@@ -115,7 +115,7 @@ async function handleFollowage(tags, isBroadcaster, isMod) {
             });
             
             if (!userResponse.data.data || userResponse.data.data.length === 0) {
-                console.error('Пользователь не найден в API');
+                console.error('Пользователь не найден в API погоди ');
                 return fallbackFollowageResponse(isVip, isMod);
             }
             
@@ -176,14 +176,14 @@ async function handleFollowage(tags, isBroadcaster, isMod) {
 // Вспомогательная для форматирования followage
 function formatFollowageResponse(followData, isMod, isVip, username) {
     if (!followData.isFollowing) {
-        return 'Вы не подписаны на канал';
+        return 'Вы не подписаны на канал чего ';
     }
     
     const followedAt = followData.followedAt;
     const followDuration = formatFollowageDuration(followedAt);
     
     // База
-    let message = `Вы отслеживаете ${followDuration}`;
+    let message = ` PETTHECHAT Вы отслеживаете ${followDuration}`;
     
     // Для модеров (ПРАВИТЬ)
     if (isMod) {
@@ -228,7 +228,7 @@ async function handleCategories(channelName) {
         
         // Стрим офлайн
         if (!streamResponse.data.data || streamResponse.data.data.length === 0) {
-            return "На данный момент стрим не запущен";
+            return "На данный момент стрим не запущен  вообще-то ";
         }
         
         const streamData = streamResponse.data.data[0];
@@ -305,7 +305,7 @@ async function handleCategories(channelName) {
         
     } catch (error) {
         console.error('Ошибка в handleCategories:', error.message);
-        return "На данный момент стрим не запущен";
+        return "На данный момент стрим не запущен вообще-то ";
     }
 }
 
