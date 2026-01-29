@@ -15,7 +15,10 @@ const forbiddenWords = [
 
 // белый список личных эмозди 7TV + базовые твича
 const allowedEmojis = [
-'ага', 'вип', 'дада', 'ку', 'нетнет', 'ох', 'погоди', 'саб', 'тише', 'тревога', 'тусим', 'угу', 
+'ага', 'вип', 'дада', 'ку', 'нетнет', 'ох', 'погоди', 'саб', 'тише', 'тревога', 'тусим', 'угу',
+'вообще-то','модеры','молю','ч','bla','BONKTHESTREAMER','а','ало','верим?','долбит','МОЛЮ','налево','направо',
+'понял','прив','привет','стример','чего','o7','дурка','запомнил','опа','синема','хдд',
+'NOOOO',' SVIN',' PETTHECHAT','GIGAMODS',
 'ура', 'хд', 'хехе', 'хмм', 'че', 'чел', 'BONKTHEMODS', 'catJAM', 'CHAD', 'CLEAN', 'PETTHECHAT', 
 '4Head', 'ANELE', 'AmbessaLove', 'AndalusianCrush', 'AnotherRecord', 'ArgieB8', 
 'ArsonNoSexy', 'AsexualPride', 'AsianGlow', 'B)', 'B-)', 'BCWarrior', 'BOP', 'BabyRage', 
