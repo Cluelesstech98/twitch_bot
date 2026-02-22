@@ -2,16 +2,13 @@ const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const db = new sqlite3.Database(path.join(__dirname, 'bot_database.db'));
 
-// Инициализация
 db.serialize(() => {
-    // Таблица для IQ
     db.run(`CREATE TABLE IF NOT EXISTS user_iq (
         username TEXT PRIMARY KEY,
         iq_value INTEGER,
         last_updated DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
     
-    // Таблица для нарушений
     db.run(`CREATE TABLE IF NOT EXISTS violations (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT,
@@ -21,21 +18,18 @@ db.serialize(() => {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
     
-    // Таблица для спама
     db.run(`CREATE TABLE IF NOT EXISTS spam_tracking (
         username TEXT PRIMARY KEY,
         spam_count INTEGER DEFAULT 0,
         last_spam DATETIME
     )`);
     
-    // Таблица для предупреждений
     db.run(`CREATE TABLE IF NOT EXISTS warnings (
         username TEXT PRIMARY KEY,
         warn_count INTEGER DEFAULT 0,
         last_warn DATETIME
     )`);
     
-    // Таблица для сессий стримов
     db.run(`CREATE TABLE IF NOT EXISTS stream_sessions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         stream_id TEXT UNIQUE NOT NULL,
@@ -44,7 +38,6 @@ db.serialize(() => {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
     
-    // Таблица для категорий стримов
     db.run(`CREATE TABLE IF NOT EXISTS stream_categories (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         session_id INTEGER NOT NULL,
@@ -54,15 +47,12 @@ db.serialize(() => {
         FOREIGN KEY (session_id) REFERENCES stream_sessions(id) ON DELETE CASCADE
     )`);
     
-    // Ускорение поиска
     db.run(`CREATE INDEX IF NOT EXISTS idx_stream_sessions_stream_id ON stream_sessions(stream_id)`);
     db.run(`CREATE INDEX IF NOT EXISTS idx_stream_categories_session_id ON stream_categories(session_id)`);
     db.run(`CREATE INDEX IF NOT EXISTS idx_stream_categories_ended ON stream_categories(ended_at)`);
 });
 
-// ФУНКЦИИ ДЛЯ !iq
 const database = {
-    // Получить IQ
     getUserIQ: (username) => new Promise((resolve, reject) => {
         db.get("SELECT iq_value FROM user_iq WHERE username = ?", [username], (err, row) => {
             if (err) reject(err);
@@ -70,7 +60,6 @@ const database = {
         });
     }),
     
-    // Обновить IQ
     updateUserIQ: (username, iq) => new Promise((resolve, reject) => {
         db.run(`INSERT OR REPLACE INTO user_iq (username, iq_value) VALUES (?, ?)`, 
             [username, iq], 
@@ -81,9 +70,6 @@ const database = {
         );
     }),
     
-    // ФУНКЦИИ ДЛЯ МОДЕРАЦИИ
-    
-    // Добавить нарушение
     addViolation: (username, type, duration, reason) => new Promise((resolve, reject) => {
         db.run(`INSERT INTO violations (username, violation_type, duration, reason) VALUES (?, ?, ?, ?)`,
             [username, type, duration, reason],
@@ -94,7 +80,6 @@ const database = {
         );
     }),
     
-    // Получить количество спам-нарушений
     getSpamCount: (username) => new Promise((resolve, reject) => {
         db.get("SELECT spam_count FROM spam_tracking WHERE username = ?", [username], (err, row) => {
             if (err) reject(err);
@@ -102,7 +87,6 @@ const database = {
         });
     }),
     
-    // Обновить количество спама
     updateSpamCount: (username, count) => new Promise((resolve, reject) => {
         db.run(`INSERT OR REPLACE INTO spam_tracking (username, spam_count, last_spam) VALUES (?, ?, CURRENT_TIMESTAMP)`,
             [username, count],
@@ -113,7 +97,6 @@ const database = {
         );
     }),
     
-    // Сбросить счетчик спама
     resetSpamCount: (username) => new Promise((resolve, reject) => {
         db.run("DELETE FROM spam_tracking WHERE username = ?", [username], function(err) {
             if (err) reject(err);
@@ -121,7 +104,6 @@ const database = {
         });
     }),
     
-    // Получить количество предупреждений
     getWarningCount: (username) => new Promise((resolve, reject) => {
         db.get("SELECT warn_count FROM warnings WHERE username = ?", [username], (err, row) => {
             if (err) reject(err);
@@ -129,7 +111,6 @@ const database = {
         });
     }),
     
-    // Добавить предупреждение
     addWarning: (username) => new Promise((resolve, reject) => {
         db.run(`INSERT OR REPLACE INTO warnings (username, warn_count, last_warn) 
                 VALUES (?, COALESCE((SELECT warn_count FROM warnings WHERE username = ?), 0) + 1, CURRENT_TIMESTAMP)`,
@@ -141,7 +122,6 @@ const database = {
         );
     }),
     
-    // Сбросить предупреждения
     resetWarnings: (username) => new Promise((resolve, reject) => {
         db.run("DELETE FROM warnings WHERE username = ?", [username], function(err) {
             if (err) reject(err);
@@ -149,9 +129,6 @@ const database = {
         });
     }),
     
-    // ФУНКЦИИ ДЛЯ !чебыло
-    
-    // Получить сессию стрима по stream_id
     getStreamSession: (streamId) => new Promise((resolve, reject) => {
         db.get("SELECT * FROM stream_sessions WHERE stream_id = ?", [streamId], (err, row) => {
             if (err) reject(err);
@@ -159,7 +136,6 @@ const database = {
         });
     }),
     
-    // Создать новую сессию стрима
     createStreamSession: (sessionData) => new Promise((resolve, reject) => {
         const { stream_id, started_at, current_game } = sessionData;
         db.run(`INSERT INTO stream_sessions (stream_id, started_at, current_game) VALUES (?, ?, ?)`,
@@ -171,7 +147,6 @@ const database = {
         );
     }),
     
-    // Обновить текущую игру в сессии стрима
     updateStreamSessionGame: (sessionId, currentGame) => new Promise((resolve, reject) => {
         db.run(`UPDATE stream_sessions SET current_game = ? WHERE id = ?`,
             [currentGame, sessionId],
@@ -182,7 +157,6 @@ const database = {
         );
     }),
     
-    // Добавить категорию к сессии стрима
     addCategoryToSession: (sessionId, categoryData) => new Promise((resolve, reject) => {
         const { game_name, started_at } = categoryData;
         db.run(`INSERT INTO stream_categories (session_id, game_name, started_at) VALUES (?, ?, ?)`,
@@ -194,7 +168,6 @@ const database = {
         );
     }),
     
-    // Обновить время окончания категории
     updateCategoryEndTime: (sessionId, gameName, endTime) => new Promise((resolve, reject) => {
         db.run(`UPDATE stream_categories SET ended_at = ? WHERE session_id = ? AND game_name = ? AND ended_at IS NULL`,
             [endTime, sessionId, gameName],
@@ -205,7 +178,6 @@ const database = {
         );
     }),
     
-    // Получить все категории для сессии стрима
     getStreamCategories: (sessionId) => new Promise((resolve, reject) => {
         db.all("SELECT * FROM stream_categories WHERE session_id = ? ORDER BY started_at", [sessionId], (err, rows) => {
             if (err) reject(err);
@@ -213,7 +185,6 @@ const database = {
         });
     }),
     
-    // Получить последнюю категорию для сессии
     getLastCategory: (sessionId) => new Promise((resolve, reject) => {
         db.get("SELECT * FROM stream_categories WHERE session_id = ? ORDER BY started_at DESC LIMIT 1", [sessionId], (err, row) => {
             if (err) reject(err);
@@ -221,7 +192,6 @@ const database = {
         });
     }),
     
-    // Очистить старые сессии
     cleanupOldSessions: (daysOld = 30) => new Promise((resolve, reject) => {
         const cutoffDate = new Date(Date.now() - daysOld * 24 * 60 * 60 * 1000).toISOString();
         db.run("DELETE FROM stream_sessions WHERE started_at < ?", [cutoffDate], function(err) {
@@ -230,9 +200,6 @@ const database = {
         });
     }),
     
-    // ДОПОЛНИТЕЛЬНЫЕ ФУНКЦИИ
-    
-    // Закрыть соединение с БД
     close: () => new Promise((resolve, reject) => {
         db.close((err) => {
             if (err) reject(err);
@@ -240,7 +207,6 @@ const database = {
         });
     }),
     
-    // Получить статистику по таблицам (для отладки)
     getStats: () => new Promise((resolve, reject) => {
         const stats = {};
         const queries = [
