@@ -99,7 +99,6 @@ class TwitchBot {
             const target = args[0]?.replace('@', '');
             if (!target) return;
 
-            // Если есть причина (все аргументы после ника), объединяем их
             const reason = args.length > 1 ? args.slice(1).join(' ') : 'Перманентный бан';
 
             try {
