@@ -66,21 +66,18 @@ async function handleTimeout(client, channel, username, duration, reason) {
     try {
         await timeoutUser(channelName, username, duration, reason);
     } catch (error) {
-        // Если API возвращает 400 с сообщением о невозможности затаймить пользователя,
-        // пробуем отправить raw-команду /timeout
         if (error.message.includes('400') && error.message.includes('may not be banned/timed out')) {
             console.log(`⚠️ API не может затаймить ${username}, пробуем raw-команду...`);
             try {
                 const command = `/timeout @${username} ${duration}`;
                 await client.say(channel, command);
                 console.log(`✅ Raw-таймаут отправлен для ${username}`);
-                return; // raw-команда отправлена, выходим без ошибки
+                return; 
             } catch (rawErr) {
                 console.error(`❌ Не удалось отправить raw-таймаут для ${username}:`, rawErr);
                 throw new Error(`Не удалось выдать таймаут ни через API, ни через raw-команду. Оригинальная ошибка: ${error.message}`);
             }
         } else {
-            // Другие ошибки пробрасываем дальше
             throw error;
         }
     }
