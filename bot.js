@@ -1,237 +1,288 @@
-// bot.js - Основной файл Twitch бота
+//там такая срань охх
 const tmi = require('tmi.js');
 const dotenv = require('dotenv');
 const moderation = require('./commands/moderation');
 const interactive = require('./commands/interactive');
+const aliases = require('./commands/aliases');
 
-// Загружаем переменные окружения
 dotenv.config();
 
-// ============ КОНФИГУРАЦИЯ БОТА ============
-const config = {
-    options: { 
-        debug: true, // Измените на false для продакшена
-        messagesLogLevel: 'info'
-    },
-    connection: {
-        secure: true,
-        reconnect: true,
-        reconnectInterval: 1000,
-        maxReconnectAttempts: 10
-    },
-    identity: {
-        username: 'ct98_bot', // ЗАМЕНИТЕ: имя аккаунта бота
-        password: `oauth:${process.env.ACCESS_TOKEN}` // Токен из .env
-    },
-    channels: ['CluelessTech98'] // ЗАМЕНИТЕ: ваш канал Twitch
-};
-
-// ============ ИНИЦИАЛИЗАЦИЯ КЛИЕНТА ============
-const client = new tmi.Client(config);
-
-// Подключение к Twitch
-client.connect()
-    .then(() => console.log('✅ Бот успешно подключился к Twitch'))
-    .catch(err => {
-        console.error('❌ Ошибка подключения:', err);
-        process.exit(1);
-    });
-
-// ============ ОБРАБОТКА СООБЩЕНИЙ ============
-client.on('message', async (channel, tags, message, self) => {
-    // Игнорируем сообщения от самого бота
-    if (self) return;
-    
-    const username = tags.username;
-    const isBroadcaster = tags.badges?.broadcaster === '1';
-    const isMod = tags.mod || isBroadcaster;
-    
-    // Логирование входящего сообщения
-    console.log(`[${new Date().toLocaleTimeString()}] ${username}: ${message}`);
-    
-    // 🔧 АВТОМАТИЧЕСКАЯ МОДЕРАЦИЯ
-    
-    // 1. Проверка на запрещённые слова
-    if (moderation.hasForbiddenWords(message)) {
-        const duration = moderation.getTimeoutDuration(message); // 300/600/1800 сек
-        await moderation.handleTimeout(client, channel, username, duration, 'Запрещённое слово');
-        client.deletemessage(channel, tags.id).catch(console.error);
-        return;
-    }
-    
-    // 2. Проверка на капс (>2 слов в CAPS)
-    const capsResult = moderation.checkCaps(message, username);
-    if (capsResult) {
-        if (capsResult.timeout) {
-            await moderation.handleTimeout(client, channel, username, 600, 'посиди подумай');
-        } else {
-            client.say(channel, capsResult.warning);
-        }
-    }
-    
-    // 3. Проверка на спам (≥3 одинаковых сообщений)
-    const spamResult = await moderation.checkSpam(username, message, channel);
-    if (spamResult) {
-        if (spamResult.timeout) {
-            await moderation.handleTimeout(client, channel, username, spamResult.duration, spamResult.reason);
-        } else {
-            client.say(channel, `Повторение - мать учения, но ты тоже не наглей @${username}`);
-        }
-    }
-    
-    // 4. Команды модераторов (только для модеров/стримера)
-    if (message.startsWith('!') && isMod) {
-        const [command, ...args] = message.slice(1).split(' ');
-        const targetUser = args[0]?.replace('@', '');
-        
-        try {
-            switch(command.toLowerCase()) {
-                case 'варн':
-                    if (targetUser) {
-                        const warnResult = await moderation.handleWarn(targetUser);
-                        client.say(channel, warnResult);
-                    }
-                    break;
-                case 'timeout':
-                    if (targetUser && args[1]) {
-                        const duration = parseInt(args[1]);
-                        await moderation.handleTimeout(client, channel, targetUser, duration, 'Нарушение правил');
-                    }
-                    break;
-                case 'ban':
-                    if (targetUser) {
-                        await client.ban(channel, targetUser, 'Перманентный бан')
-                            .then(() => client.say(channel, `@${targetUser} забанен навсегда.`));
-                    }
-                    break;
-            }
-        } catch (error) {
-            console.error('Ошибка в команде модерации:', error);
-        }
-    }
-    
-    // 🎪 ИНТЕРАКТИВНЫЕ КОМАНДЫ (для всех)
-    if (message.startsWith('!')) {
-        const [command, ...args] = message.slice(1).split(' ');
-        
-        try {
-            switch(command.toLowerCase()) {
-                // ============ ИНФОРМАЦИОННЫЕ КОМАНДЫ ============
-                case '7тв':
-                    const sevenTVResponse = interactive.handle7tv();
-                    client.say(channel, `@${username}, ${sevenTVResponse}`);
-                    break;
-                    
-                case 'пинг':
-                    // Передаём текущее время для измерения задержки
-                    const pingResponse = interactive.handlePing(Date.now());
-                    client.say(channel, `@${username}, ${pingResponse}`);
-                    break;
-                    
-                case 'э':
-                    const ehResponse = interactive.handleEh();
-                    client.say(channel, `@${username}, ${ehResponse}`);
-                    break;
-                    
-                case 'тг':
-                    const tgResponse = interactive.handleTg();
-                    client.say(channel, `@${username}, ${tgResponse}`);
-                    break;
-                    
-                case 'правила':
-                case 'rules':
-                    const rulesResponse = interactive.handleRules();
-                    client.say(channel, `@${username}, ${rulesResponse}`);
-                    break;
-                    
-                // ============ ИГРОВЫЕ КОМАНДЫ ============
-                case 'iq':
-                case 'айкью':
-                case 'icq':
-                    const iqResponse = await interactive.handleIQ(username);
-                    client.say(channel, `@${username}, ${iqResponse}`);
-                    break;
-                    
-                case 'игра':
-                    const gameResponse = await interactive.handleGame();
-                    client.say(channel, `@${username}, ${gameResponse}`);
-                    break;
-                    
-                // ============ КОМАНДЫ ОТСЛЕЖИВАНИЯ ============
-                case 'followage':
-                case 'отслеживание':
-                case 'подписка':
-                    const followageResponse = await interactive.handleFollowage(tags, isBroadcaster);
-                    client.say(channel, `@${username}, ${followageResponse}`);
-                    break;
-                    
-                case 'чебыло':
-                    const categoriesResponse = await interactive.handleCategories(channel.replace('#', ''));
-                    client.say(channel, `@${username}, ${categoriesResponse}`);
-                    break;
-                    
-                // ============ КОМАНДА ПОДАРКОВ ============
-                case '+подарок':
-                    if (args.length > 0) {
-                        const giftName = args.join(' ');
-                        const addGiftResponse = interactive.addGift(giftName, username);
-                        client.say(channel, addGiftResponse);
-                    }
-                    break;
-                    
-                case 'подарок':
-                    const giftResponse = await interactive.handleGift(username, client, channel);
-                    client.say(channel, giftResponse);
-                    break;
-            }
-        } catch (error) {
-            console.error(`Ошибка в обработке команды ${command}:`, error);
-            client.say(channel, `@${username}, произошла ошибка при выполнении команды.`);
-        }
-    }
-});
-
-// ============ ОБРАБОТЧИКИ СОБЫТИЙ ============
-
-// Успешное подключение
-client.on('connected', (address, port) => {
-    console.log(`✅ Бот подключен к ${address}:${port}`);
-});
-
-// Ошибка подключения
-client.on('disconnected', (reason) => {
-    console.warn(`⚠️ Бот отключен: ${reason}`);
-});
-
-// Ошибка аутентификации
-client.on('login_failure', () => {
-    console.error('❌ Ошибка аутентификации. Проверьте токены в .env файле');
+const requiredEnv = ['ACCESS_TOKEN', 'BOT_USERNAME', 'CHANNEL_NAME', 'CLIENT_ID'];
+const missingEnv = requiredEnv.filter(key => !process.env[key]);
+if (missingEnv.length) {
+    console.error(`❌ Отсутствуют переменные окружения: ${missingEnv.join(', ')}`);
     process.exit(1);
-});
+}
 
-// ============ ОБРАБОТКА ЗАВЕРШЕНИЯ ============
-process.on('SIGINT', () => {
-    console.log('\n🛑 Получен сигнал завершения...');
-    client.disconnect()
-        .then(() => {
-            console.log('✅ Бот отключён корректно');
-            process.exit(0);
-        })
-        .catch(err => {
-            console.error('❌ Ошибка при отключении:', err);
+class TwitchBot {
+    constructor() {
+        this.config = {
+            options: {
+                debug: process.env.DEBUG === 'true',
+                messagesLogLevel: process.env.LOG_LEVEL || 'info'
+            },
+            connection: {
+                secure: true,
+                reconnect: true,
+                reconnectInterval: 2000,
+                maxReconnectAttempts: 20,
+                timeout: 20000
+            },
+            identity: {
+                username: process.env.BOT_USERNAME,
+                password: `oauth:${process.env.ACCESS_TOKEN}`,
+                clientId: process.env.CLIENT_ID
+            },
+            channels: [process.env.CHANNEL_NAME]
+        };
+
+        this.client = new tmi.Client(this.config);
+        this.setupEventHandlers();
+    }
+
+    setupEventHandlers() {
+        this.client.on('message', this.onMessage.bind(this));
+        this.client.on('connected', (addr, port) => console.log(`✅ Бот подключен к ${addr}:${port}`));
+        this.client.on('disconnected', reason => console.warn(`⚠️ Бот отключен: ${reason}`));
+        this.client.on('login_failure', () => {
+            console.error('❌ Ошибка аутентификации. Проверьте ACCESS_TOKEN в .env');
             process.exit(1);
         });
+    }
+
+    async connect() {
+        try {
+            await this.client.connect();
+            console.log('✅ Бот уже на Twitch');
+        } catch (err) {
+            console.error('❌ Еблан?:', err);
+            process.exit(1);
+        }
+    }
+
+    modHandlers = {
+        warn: async (channel, args) => {
+            const target = args[0]?.replace('@', '');
+            if (!target) return;
+            try {
+                const result = await moderation.handleWarn(target);
+                if (result.type === 'message') {
+                    await this.safeSay(channel, result.text);
+                } else {
+                    await moderation.handleTimeout(this.client, channel, target, result.duration, result.reason);
+                }
+            } catch (error) {
+                if (error.code === 'BOT_MODERATION') {
+                    await this.safeSay(channel, `⚠️ своих не баним --> ${target}.`);
+                } else {
+                    console.error(`Ошибка в команде warn для ${target}:`, error);
+                    await this.safeSay(channel, `⚠️ Произошла ошибка. Основная - твой код.`);
+                }
+            }
+        },
+        timeout: async (channel, args) => {
+            const target = args[0]?.replace('@', '');
+            const duration = parseInt(args[1]);
+            if (!target || isNaN(duration)) return;
+            try {
+                await moderation.handleTimeout(this.client, channel, target, duration, 'Нарушение правил');
+            } catch (error) {
+                if (error.code === 'BOT_MODERATION') {
+                    await this.safeSay(channel, `⚠️ Нельзя затаймить бота ${target}.`);
+                } else {
+                    console.error(`Ошибка в команде timeout для ${target}:`, error);
+                    await this.safeSay(channel, `⚠️ Не удалось затаймить ${target}.`);
+                }
+            }
+        },
+        ban: async (channel, args) => {
+            const target = args[0]?.replace('@', '');
+            if (!target) return;
+
+            // Если есть причина (все аргументы после ника), объединяем их
+            const reason = args.length > 1 ? args.slice(1).join(' ') : 'Перманентный бан';
+
+            try {
+                await moderation.handleBan(this.client, channel, target, reason);
+                await this.safeSay(channel, `@${target} забанен. Причина: ${reason}`);
+            } catch (error) {
+                if (error.code === 'BOT_MODERATION') {
+                    await this.safeSay(channel, `⚠️ Нельзя забанить бота ${target}.`);
+                } else {
+                    console.error(`Ошибка в команде ban для ${target}:`, error);
+                    await this.safeSay(channel, `Не удалось забанить @${target}.`);
+                }
+            }
+        },
+    };
+
+    userHandlers = {
+        '7tv': async (channel, args, username) => {
+            await this.safeSay(channel, `@${username}, ${interactive.handle7tv()}`);
+        },
+        ping: async (channel, args, username) => {
+            await this.safeSay(channel, `@${username}, ${interactive.handlePing(Date.now())}`);
+        },
+        eh: async (channel, args, username) => {
+            await this.safeSay(channel, `@${username}, ${interactive.handleEh()}`);
+        },
+        tg: async (channel, args, username) => {
+            await this.safeSay(channel, `@${username}, ${interactive.handleTg()}`);
+        },
+        rules: async (channel, args, username) => {
+            await this.safeSay(channel, `@${username}, ${interactive.handleRules()}`);
+        },
+        iq: async (channel, args, username) => {
+            try {
+                const response = await interactive.handleIQ(username);
+                await this.safeSay(channel, `@${username}, ${response}`);
+            } catch {
+                await this.safeSay(channel, `@${username}, ошибка IQ.`);
+            }
+        },
+        game: async (channel, args, username) => {
+            const response = await interactive.handleGame();
+            await this.safeSay(channel, `@${username}, ${response}`);
+        },
+        followage: async (channel, args, username, tags, isBroadcaster) => {
+            try {
+                const response = await interactive.handleFollowage(tags, isBroadcaster);
+                await this.safeSay(channel, `@${username}, ${response}`);
+            } catch {
+                await this.safeSay(channel, `@${username}, ошибка followage.`);
+            }
+        },
+        categories: async (channel, args, username) => {
+            try {
+                const response = await interactive.handleCategories(channel.replace('#', ''));
+                await this.safeSay(channel, `@${username}, ${response}`);
+            } catch {
+                await this.safeSay(channel, `@${username}, ошибка категорий.`);
+            }
+        },
+        addgift: async (channel, args, username, tags, isBroadcaster, isMod) => {
+            if (!args.length) return;
+            const response = interactive.addGift(args.join(' '), username, isBroadcaster, isMod);
+            await this.safeSay(channel, response);
+        },
+        gift: async (channel, args, username) => {
+            try {
+                const response = await interactive.handleGift(username, this.client, channel);
+                await this.safeSay(channel, response);
+            } catch {
+                await this.safeSay(channel, `@${username}, ошибка подарка.`);
+            }
+        },
+        test: async (channel, args, username) => {
+            if (!args.length) return;
+            await this.safeSay(channel, args.join(' '));
+        },
+        commands: async (channel, args, username) => {
+            const response = interactive.handleCommands();
+            await this.safeSay(channel, `@${username}, ${response}`);
+        },
+    };
+
+    async safeSay(channel, message) {
+        try {
+            await this.client.say(channel, message);
+        } catch (error) {
+            console.error(`Ошибка отправки сообщения в ${channel}:`, error);
+        }
+    }
+
+    async onMessage(channel, tags, message, self) {
+        if (self) return;
+
+        const { username, mod, badges } = tags;
+        const isBroadcaster = badges?.broadcaster === '1';
+        const isMod = mod || isBroadcaster;
+
+        console.log(`[${new Date().toLocaleTimeString()}] ${username}: ${message}`);
+
+        if (!message.startsWith('!')) {
+            await this.runAutoModeration(channel, tags, message, username);
+            return;
+        }
+
+        const [rawCommand, ...args] = message.slice(1).split(' ');
+        const inputCommand = rawCommand.toLowerCase();
+
+        if (isMod) {
+            const canonicalMod = aliases.mod[inputCommand];
+            if (canonicalMod && this.modHandlers[canonicalMod]) {
+                await this.modHandlers[canonicalMod](channel, args, username);
+                return;
+            }
+        }
+
+        const canonicalUser = aliases.user[inputCommand];
+        if (canonicalUser && this.userHandlers[canonicalUser]) {
+            await this.userHandlers[canonicalUser](channel, args, username, tags, isBroadcaster, isMod);
+        }
+    }
+
+    async runAutoModeration(channel, tags, message, username) {
+        if (moderation.hasForbiddenWords(message)) {
+            try {
+                const duration = moderation.getTimeoutDuration(message);
+                await moderation.handleTimeout(this.client, channel, username, duration, 'Запрещённое слово');
+                await this.client.deletemessage(channel, tags.id).catch(err =>
+                    console.error(`Не удалось удалить сообщение:`, err)
+                );
+            } catch (error) {
+                console.error(`Ошибка при обработке запрещённого слова:`, error);
+            }
+            return true;
+        }
+
+        const capsResult = moderation.checkCaps(message, username);
+        if (capsResult) {
+            try {
+                if (capsResult.timeout) {
+                    await moderation.handleTimeout(this.client, channel, username, 600, 'посиди подумай');
+                } else {
+                    await this.safeSay(channel, capsResult.warning);
+                }
+            } catch (error) {
+                console.error(`Ошибка при обработке капса:`, error);
+            }
+            return true;
+        }
+
+        try {
+            const spamResult = await moderation.checkSpam(username, message);
+            if (spamResult) {
+                if (spamResult.timeout) {
+                    await moderation.handleTimeout(this.client, channel, username, spamResult.duration, spamResult.reason);
+                } else {
+                    await this.safeSay(channel, spamResult.warning);
+                }
+                return true;
+            }
+        } catch (error) {
+            console.error(`Ошибка при проверке спама:`, error);
+        }
+
+        return false;
+    }
+}
+
+const bot = new TwitchBot();
+bot.connect();
+
+process.on('SIGINT', async () => {
+    console.log('\n🛑 Завершаем...');
+    await bot.client.disconnect();
+    console.log('✅ Бот отключён');
+    process.exit(0);
 });
 
-// ============ ГЛОБАЛЬНАЯ ОБРАБОТКА ОШИБОК ============
-process.on('unhandledRejection', (reason, promise) => {
+process.on('unhandledRejection', (reason) => {
     console.error('⚠️ Необработанное отклонение промиса:', reason);
 });
-
 process.on('uncaughtException', (error) => {
     console.error('⚠️ Непойманное исключение:', error);
-    // Не завершаем процесс, чтобы бот продолжал работать
 });
 
-// Экспорт для тестирования
-module.exports = { client };
+module.exports = { client: bot.client };

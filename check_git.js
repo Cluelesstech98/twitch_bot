@@ -1,3 +1,4 @@
+//пусть чекает, не трогай его
 const fs = require('fs');
 const path = require('path');
 
