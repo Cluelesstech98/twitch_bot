@@ -1,8 +1,8 @@
 config/.env
 config/.env.*
 .env
-*.db
 bot_database.db
+*.db
+data/
 node_modules/
 logs/
-data/
