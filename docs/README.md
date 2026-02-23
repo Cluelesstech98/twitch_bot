@@ -220,12 +220,19 @@
 ### Конфигурация .env (в папке config/)
 
 ACCESS_TOKEN=ваш_access_token_бота
+
 CLIENT_ID=ваш_client_id
+
 BOT_USERNAME=имя_бота
+
 CHANNEL_NAME=ваш_канал
+
 TELEGRAM_LINK=ссылка_на_telegram (опционально)
+
 BACKUP_CHANNEL_CREATION_DATE=2020-01-01 (резервная дата создания канала)
+
 DEBUG=true
+
 LOG_LEVEL=info
 
 
@@ -280,35 +287,65 @@ LOG_LEVEL=info
 
 twitch-bot/
 ├── src/                          # Исходный код
+
 │   ├── commands/                 # Обработчики команд
+
 │   │   ├── aliases.js            # Алиасы команд
+
 │   │   ├── bannedWords.js        # Список запрещённых слов
+
 │   │   ├── interactive.js        # Интерактивные команды
+
 │   │   └── moderation.js         # Логика модерации
+
 │   ├── services/                  # Бизнес-логика и внешние сервисы
+
 │   │   ├── api.js                 # Прямые вызовы Twitch Helix API
+
 │   │   ├── database.js            # Работа с SQLite
+
 │   │   ├── viewerStatus.js        # Определение статуса зрителя
+
 │   │   ├── voting.js              # Голосование за игры
+
 │   │   ├── points.js              # Очки бота
+
 │   │   ├── proverbs.js            # Пословицы
+
 │   │   └── roulette.js            # Рулетка
+
 │   ├── utils/                     # Вспомогательные функции
+
 │   │   └── utils.js                # Форматирование, API-запросы
+
 │   └── bot.js                      # Главный файл бота
+
 ├── config/                         # Конфигурация
+
 │   ├── .env                        # Файл с токенами (не в репозитории!)
+
 │   ├── .env.example                # Пример конфигурации
+
 │   └── .gitignore
+
 ├── data/                           # Данные
+
 │   └── bot_database.db              # SQLite база данных (создаётся автоматически)
+
 ├── docs/                            # Документация
+
 │   ├── README.md                    # Этот файл
+
 │   └── CHANGELOG.md                 # История изменений
+
 ├── scripts/                         # Вспомогательные скрипты
+
 │   └── check_git.js                  # Скрипт проверки Git
+
 ├── package.json
+
 ├── package-lock.json
+
 └── future.txt                        # Планы развития (опционально)
 
 ## Разработка
