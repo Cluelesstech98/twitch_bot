@@ -27,8 +27,9 @@ module.exports = {
         'рулетка': 'roulette',
         'баллы': 'points',
         'очки': 'points',
-        '-подарки': 'resetgift',
-        '0подарки': 'resetgift',
+        'сбросить_подарки': 'resetgift',
+        'сброс_подарков': 'resetgift',
+        '+очки': 'addpoints',
     },
     mod: {
         'варн': 'warn',
