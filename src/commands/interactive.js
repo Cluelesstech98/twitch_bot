@@ -42,13 +42,11 @@ async function handleIQ(username) {
     try {
         const oldIQ = await database.getUserIQ(username);
         const newIQ = Math.floor(Math.random() * 250) + 1;
-
         let message = `Ваш IQ = ${newIQ}`;
         if (oldIQ !== null && oldIQ !== undefined) {
             const diff = newIQ - oldIQ;
             message += ` (${diff >= 0 ? '+' : ''}${diff})`;
         }
-
         await database.updateUserIQ(username, newIQ);
         await points.awardActivityPoints(username);
         return message;
@@ -62,12 +60,10 @@ async function handleGame() {
     try {
         const currentGame = await getCurrentGame(CHANNEL_NAME);
         if (!currentGame) return 'Сейчас стрим не в эфире';
-
         const lowerGame = currentGame.toLowerCase();
         if (lowerGame.includes('just chatting') || lowerGame.includes('общение')) {
             return 'Пока не играем';
         }
-
         return `Сейчас играем в ${currentGame}`;
     } catch (error) {
         console.error('Ошибка в handleGame:', error);
@@ -78,7 +74,6 @@ async function handleGame() {
 async function handleFollowage(tags, isBroadcaster) {
     try {
         const username = tags.username;
-
         if (isBroadcaster) {
             let creationDate;
             try {
@@ -96,36 +91,21 @@ async function handleFollowage(tags, isBroadcaster) {
 
         const channelResponse = await axios.get(
             `https://api.twitch.tv/helix/users?login=${CHANNEL_NAME}`,
-            {
-                headers: {
-                    'Client-ID': CLIENT_ID,
-                    Authorization: `Bearer ${ACCESS_TOKEN}`,
-                },
-            }
+            { headers: { 'Client-ID': CLIENT_ID, Authorization: `Bearer ${ACCESS_TOKEN}` } }
         );
         if (!channelResponse.data.data.length) return 'Канал не найден';
         const broadcasterId = channelResponse.data.data[0].id;
 
         const userResponse = await axios.get(
             `https://api.twitch.tv/helix/users?login=${username}`,
-            {
-                headers: {
-                    'Client-ID': CLIENT_ID,
-                    Authorization: `Bearer ${ACCESS_TOKEN}`,
-                },
-            }
+            { headers: { 'Client-ID': CLIENT_ID, Authorization: `Bearer ${ACCESS_TOKEN}` } }
         );
         if (!userResponse.data.data.length) return 'Пользователь не найден';
         const userId = userResponse.data.data[0].id;
 
         const followResponse = await axios.get(
             `https://api.twitch.tv/helix/channels/followers?user_id=${userId}&broadcaster_id=${broadcasterId}`,
-            {
-                headers: {
-                    'Client-ID': CLIENT_ID,
-                    Authorization: `Bearer ${ACCESS_TOKEN}`,
-                },
-            }
+            { headers: { 'Client-ID': CLIENT_ID, Authorization: `Bearer ${ACCESS_TOKEN}` } }
         );
         if (!followResponse.data.data.length) return 'Вы точно подписаны?';
 
@@ -143,12 +123,7 @@ async function handleCategories(channelName) {
     try {
         const streamResponse = await axios.get(
             `https://api.twitch.tv/helix/streams?user_login=${channelName}`,
-            {
-                headers: {
-                    'Client-ID': CLIENT_ID,
-                    Authorization: `Bearer ${ACCESS_TOKEN}`,
-                },
-            }
+            { headers: { 'Client-ID': CLIENT_ID, Authorization: `Bearer ${ACCESS_TOKEN}` } }
         );
         if (!streamResponse.data.data.length) return 'Э, напиши в онлайне';
 
@@ -236,22 +211,20 @@ function handleRules() {
 
 function handleCommands() {
     return `
-📋 Доступные команды:
-• !iq 
-• !игра 
-• !подарок 
-• !followage 
-• !чебыло 
-• !7тв 
-• !пинг 
-• !э 
+• !iq
+• !игра
+• !подарок
+• !followage
+• !чебыло
+• !7тв
+• !э
 • !тг 
-• !правила 
-• !предложение [игра] 
+• !правила
+• !предложение [игра]
 • !голос [игра]
-• !итоги 
-• !пословица [слово] 
-• !рулетка 
+• !итоги
+• !пословица [слово]
+• !рулетка
 • !баллы`;
 }
 
@@ -397,13 +370,10 @@ async function handleVote(args, username) {
 
 async function handleStreamStats() {
     if (!currentStreamId) return 'Стрим не активен или статистика недоступна.';
-    
     const votingResults = await voting.getResults(currentStreamId);
     let votingPart = 'Голосование:\n' + (votingResults || 'Нет голосов');
-    
-    const stats = await database.getStreamStats(currentStreamId); 
+    const stats = await database.getStreamStats(currentStreamId);
     const bansPart = stats ? `Нарушений: ${stats.warns}, банов: ${stats.bans}` : 'Статистика нарушений временно недоступна';
-    
     return `${votingPart}\n\n${bansPart}`;
 }
 
@@ -431,6 +401,41 @@ async function handlePoints(username) {
     return `@${username}, у вас ${userPoints} очков.`;
 }
 
+async function handleAddPoints(args, invoker, isBroadcaster, isMod) {
+    if (!isBroadcaster && !isMod) {
+        return `@${invoker}, эта команда доступна только модераторам и стримеру.`;
+    }
+    if (args.length < 2) {
+        return `@${invoker}, укажите ник и количество очков. Пример: !+очки @ник 100 или !+очки 100 @ник`;
+    }
+
+    let targetUsername = null;
+    let amount = null;
+
+    for (const arg of args) {
+        if (/^\d+$/.test(arg)) {
+            amount = parseInt(arg, 10);
+        } else {
+            targetUsername = arg.replace('@', '');
+        }
+    }
+
+    if (!targetUsername) {
+        return `@${invoker}, не удалось определить имя пользователя.`;
+    }
+    if (amount === null || amount <= 0) {
+        return `@${invoker}, укажите корректное положительное число очков.`;
+    }
+
+    try {
+        await points.addPoints(targetUsername, amount);
+        return `@${invoker}, начислено ${amount} очков пользователю @${targetUsername}.`;
+    } catch (error) {
+        console.error('Ошибка при начислении очков:', error);
+        return `@${invoker}, произошла ошибка при начислении очков.`;
+    }
+}
+
 module.exports = {
     handleIQ,
     handleGame,
@@ -446,11 +451,12 @@ module.exports = {
     handleGift,
     handleResetGift,
     clearGiftCache,
+    setCurrentStreamId,
     handleGameProposal,
     handleVote,
     handleStreamStats,
     handleProverb,
     handleRoulette,
     handlePoints,
-    setCurrentStreamId,
+    handleAddPoints,
 };
