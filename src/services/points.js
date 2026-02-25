@@ -22,4 +22,13 @@ async function addPoints(username, amount) {
     await database.addUserPoints(username, amount);
 }
 
-module.exports = { awardActivityPoints, getPoints, spendPoints, addPoints };
+async function transferPoints(from, to, amount) {
+    if (from === to) return 'Нельзя переводить очки самому себе.';
+    const balance = await getPoints(from);
+    if (balance < amount) return 'Недостаточно очков.';
+    await spendPoints(from, amount);
+    await addPoints(to, amount);
+    return `Переведено ${amount} очков от @${from} к @${to}.`;
+}
+
+module.exports = { awardActivityPoints, getPoints, spendPoints, addPoints, transferPoints };

@@ -34,6 +34,14 @@ module.exports = {
         '-подарки': 'resetgift',
         '0подарки': 'resetgift',
         '+очки': 'addpoints',
+        'анекдот': 'joke',
+        'судьба': 'fortune',
+        'дуэль': 'duel',
+        'принять': 'acceptduel',
+        'отклонить': 'declineduel',
+        'репорт': 'report',
+        'перевод': 'transfer',
+        'топ': 'top',
     },
     mod: {
         'варн': 'warn',
@@ -44,5 +52,6 @@ module.exports = {
         'бан': 'ban',
         'ban': 'ban',
         'бах': 'ban',
+        'разбан': 'unban',
     },
 };

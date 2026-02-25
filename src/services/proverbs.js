@@ -1,9 +1,9 @@
-const database = require('./database'); // тестовая функция, требует дополнения
+const database = require('./database');
 
 const defaultTemplates = [
     'Семь раз {word}, один раз Антон',
     'Не имей сто рублей, а имей {word} друзей',
-    '{word} кашу маслом не испортишь',
+    '{word} маслом не испортишь',
     'Дарёному {word} в зубы не смотрят',
     'В тихом омуте {word} водятся',
 ];
