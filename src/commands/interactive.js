@@ -3,6 +3,10 @@ const voting = require('../services/voting');
 const points = require('../services/points');
 const proverbs = require('../services/proverbs');
 const roulette = require('../services/roulette');
+const jokes = require('../services/jokes');
+const fortunes = require('../services/fortunes');
+const reports = require('../services/reports');
+const { getCorrectForm } = require('../utils/utils');
 
 let currentStreamId = null;
 
@@ -10,7 +14,6 @@ const {
     getCurrentGame,
     getChannelCreationDate,
     formatTimeDiffExact,
-    getCorrectForm,
 } = require('../utils/utils');
 const axios = require('axios');
 const NodeCache = require('node-cache');
@@ -25,7 +28,7 @@ const BACKUP_CHANNEL_CREATION_DATE = process.env.BACKUP_CHANNEL_CREATION_DATE;
 const giftBanCache = new NodeCache({ stdTTL: 60 });
 const giftReceivedCache = new NodeCache({ stdTTL: 60 * 60 * 12 });
 
-const textGifts = [                                        // подарки следует поменять под тематику канала
+const textGifts = [                     //Замени своими
     'сегодня без подарка Chel ',
     'семь подарков на неделе ох ',
     'лови печеньку дада ',
@@ -59,12 +62,12 @@ async function handleIQ(username) {
 async function handleGame() {
     try {
         const currentGame = await getCurrentGame(CHANNEL_NAME);
-        if (!currentGame) return 'Сейчас стрим не в эфире';
+        if (!currentGame) return 'Ты видишь онлайн?';
         const lowerGame = currentGame.toLowerCase();
         if (lowerGame.includes('just chatting') || lowerGame.includes('общение')) {
             return 'Пока не играем';
         }
-        return `Сейчас играем в ${currentGame}`;
+        return `Играем в ${currentGame}`;
     } catch (error) {
         console.error('Ошибка в handleGame:', error);
         return 'Не удалось получить информацию об игре';
@@ -210,7 +213,7 @@ async function handleCategories(channelName) {
 }
 
 function handle7tv() {
-    return 'Не видишь эти эмоуты? NOOOO SVIN PETTHECHAT GIGAMODS ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬ тогда подключай расширение 7TV ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬ https://chromewebstore.google.com/detail/7tv/ammjkodgmmoknidbanneddgankgfejfh?hl=ru&utm_source=ext_sidebar ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬ есть в тёмной теме https://chromewebstore.google.com/detail/7tv-nightly/fphegifdehlodcepfkgofelcenelpedj?hl=ru&utm_source=ext_sidebar';
+    return 'Не видишь эти эмоуты? NOOOO SVIN PETTHECHAT GIGAMODS ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬ тогда подключай расширение 7TV  ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬ https://chromewebstore.google.com/detail/7tv/ammjkodgmmoknidbanneddgankgfejfh?hl=ru&utm_source=ext_sidebar  ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬ есть в тёмной теме https://chromewebstore.google.com/detail/7tv-nightly/fphegifdehlodcepfkgofelcenelpedj?hl=ru&utm_source=ext_sidebar';
 }
 
 function handlePing(receivedTime) {
@@ -218,11 +221,11 @@ function handlePing(receivedTime) {
 }
 
 function handleEh() {
-    return 'ало нормально работаем, чего ты ало';
+    return 'ало нормально работаем, чего ты';
 }
 
 function handleTg() {
-    return process.env.TELEGRAM_LINK || 'Дурак?';
+    return process.env.TELEGRAM_LINK || 'Че за повозка?';
 }
 
 function handleRules() {
@@ -247,12 +250,19 @@ function handleCommands() {
 • !итоги 
 • !пословица [слово] 
 • !рулетка 
-• !баллы`;
+• !баллы
+• !анекдот
+• !судьба
+• !дуэль @ник [очки]
+• !принять / !отклонить
+• !репорт @ник [причина]
+• !перевод @ник [очки]
+• !топ [очки/iq/варн/бан]`;
 }
 
 function addGift(giftName, username, isBroadcaster, isMod) {
     if (!isBroadcaster && !isMod) {
-        return `@${username} эта команда доступна только модераторам`;
+        return `@${username} только для модераторов`;
     }
     if (!giftName || !giftName.trim()) {
         return `@${username} укажите название подарка`;
@@ -275,7 +285,7 @@ async function handleGift(username, client, channel, isBroadcaster, isMod) {
                 const gift = textGifts[Math.floor(Math.random() * textGifts.length)];
                 return `@${username} ${gift}`;
             } else {
-                return `@${username} сегодня получаешь БАН!  опа (но ты ж свой, так что подарок засчитан)`;
+                return `@${username} сегодня получаешь БАН! опа да блин, знаете же, что своих не баню`;
             }
         }
 
@@ -287,7 +297,7 @@ async function handleGift(username, client, channel, isBroadcaster, isMod) {
             await client.timeout(channel, username, 600, 'Повторный запрос бан-подарка');
             giftBanCache.del(username);
             giftReceivedCache.set(username, true);
-            return `@${username} сегодня получаешь БАН!  опа (таймаут 10 минут за повторный запрос)`;
+            return `@${username} сегодня получаешь БАН! опа (таймаут на 10 минут за повторный запрос)`;
         }
 
         const random = Math.random() * 100;
@@ -299,22 +309,22 @@ async function handleGift(username, client, channel, isBroadcaster, isMod) {
         } else {
             giftBanCache.set(username, 'BAN');
             giftReceivedCache.set(username, true);
-            return `@${username} сегодня получаешь БАН!  опа (для получения подарка повторите запрос в течение минуты)`;
+            return `@${username} сегодня получаешь БАН! опа (таймаут на 10 минут за повторный запрос)`;
         }
     } catch (error) {
         console.error('Ошибка в handleGift:', error);
-        return `@${username} произошла ошибка при выдаче подарка`;
+        return `@${username} что-то сломалось тревога `;
     }
 }
 
 function handleResetGift(username, isBroadcaster) {
     if (!isBroadcaster) {
-        return `@${username} эта команда доступна только стримеру`;
+        return `@${username} нее, только стример так может`;
     }
     giftReceivedCache.flushAll();
     giftBanCache.flushAll();
-    console.log(`[${new Date().toLocaleTimeString()}] Кэш подарков сброшен стримером ${username}`);
-    return `@${username} кэш подарков сброшен! Все теперь могут получить подарок заново.`;
+    console.log(`[${new Date().toLocaleTimeString()}] Подарки сброшены ${username}`);
+    return `@${username} подарки сброшены, можно получать снова!`;
 }
 
 function clearGiftCache() {
@@ -369,9 +379,9 @@ function setCurrentStreamId(id) {
 }
 
 async function handleGameProposal(args, username) {
-    if (!args.length) return 'Укажите название игры. Пример: !предложение Elden Ring';
+    if (!args.length) return 'Укажите название игры';
     const gameName = args.join(' ');
-    if (!currentStreamId) return 'Сейчас нет активного стрима для голосования.';
+    if (!currentStreamId) return 'Сейчас нет активного стрима для голосования';
     const result = await voting.proposeGame(currentStreamId, gameName, username);
     if (result) {
         await points.awardActivityPoints(username);
@@ -380,7 +390,7 @@ async function handleGameProposal(args, username) {
 }
 
 async function handleVote(args, username) {
-    if (!args.length) return 'Укажите название игры, за которую хотите проголосовать. Пример: !голос Elden Ring';
+    if (!args.length) return 'Укажите название игры, за которую хотите проголосовать';
     const gameName = args.join(' ');
     if (!currentStreamId) return 'Сейчас нет активного стрима для голосования.';
     const result = await voting.voteGame(currentStreamId, gameName, username);
@@ -391,14 +401,11 @@ async function handleVote(args, username) {
 }
 
 async function handleStreamStats() {
-    if (!currentStreamId) return 'Стрим не активен или статистика недоступна.';
-    
+    if (!currentStreamId) return 'Стрим не активен или статистика недоступна';
     const votingResults = await voting.getResults(currentStreamId);
     let votingPart = 'Голосование:\n' + (votingResults || 'Нет голосов');
-    
-    const stats = await database.getStreamStats(currentStreamId); 
+    const stats = await database.getStreamStats(currentStreamId);
     const bansPart = stats ? `Нарушений: ${stats.warns}, банов: ${stats.bans}` : 'Статистика нарушений временно недоступна';
-    
     return `${votingPart}\n\n${bansPart}`;
 }
 
@@ -417,7 +424,7 @@ async function handleRoulette(username) {
         await points.addPoints(username, winnings);
         return `${emojiString} 🎉 Вы выиграли ${winnings} очков! Всего очков: ${await points.getPoints(username)}`;
     } else {
-        return `${emojiString} Повезёт в следующий раз!`;
+        return `${emojiString} оп ахах`;
     }
 }
 
@@ -428,10 +435,10 @@ async function handlePoints(username) {
 
 async function handleAddPoints(args, invoker, isBroadcaster, isMod) {
     if (!isBroadcaster && !isMod) {
-        return `@${invoker}, эта команда доступна только модераторам и стримеру.`;
+        return `@${invoker}, только модераторам и стримеру`;
     }
     if (args.length < 2) {
-        return `@${invoker}, укажите ник и количество очков. Пример: !+очки @ник 100 или !+очки 100 @ник`;
+        return `@${invoker}, не, вот так: !+очки @ник 100 или !+очки 100 @ник`;
     }
 
     let targetUsername = null;
@@ -461,6 +468,69 @@ async function handleAddPoints(args, invoker, isBroadcaster, isMod) {
     }
 }
 
+async function handleJoke() {
+    return await jokes.getRandomJoke();
+}
+
+async function handleFortune(username) {
+    const canGet = await database.checkDailyFortune(username);
+    if (!canGet) {
+        return `@${username}, сегодня вы уже получали предсказание. Приходите завтра, звёзды отдохнут.`;
+    }
+    const fortune = await fortunes.getRandomFortune();
+    await points.addPoints(username, 1);
+    return `🔮 ${fortune}`;
+}
+
+async function handleTransfer(args, from) {
+    if (args.length < 2) {
+        return `@${from}, не, вот так: !перевод @ник 100`;
+    }
+    const to = args[0].replace('@', '');
+    const amount = parseInt(args[1]);
+    if (isNaN(amount) || amount <= 0) return `@${from}, пиши числами`;
+    if (to === from) return `@${from}, ну закинул себе, доволен?`;
+    const result = await points.transferPoints(from, to, amount);
+    return result;
+}
+
+async function handleTop(args) {
+    if (args.length === 0) return 'Добавь категорию: очки, iq, варн, бан';
+    const type = args[0].toLowerCase();
+    const limit = args[1] ? parseInt(args[1]) : 10;
+    let data;
+    switch (type) {
+        case 'очки':
+        case 'points':
+            data = await database.getTopPoints(limit);
+            break;
+        case 'iq':
+            data = await database.getTopIQ(limit);
+            break;
+        case 'варн':
+        case 'warns':
+            data = await database.getTopWarns(limit);
+            break;
+        case 'бан':
+        case 'bans':
+            data = await database.getTopBans(limit);
+            break;
+        default:
+            return 'Пока что только: очки, iq, варн, бан';
+    }
+    if (!data || data.length === 0) return 'В топе точно кто-то есть, Тайлер?';
+    const lines = data.map((item, i) => `${i+1}. ${item.username} — ${item.points || item.iq || item.warns || item.bans}`);
+    return `Топ ${type}:\n` + lines.join('\n');
+}
+
+async function handleReport(args, reporter) {
+    if (args.length < 2) return `@${reporter}, укажите ник и причину. Пример: !репорт @ник спам`;
+    const offender = args[0].replace('@', '');
+    const reason = args.slice(1).join(' ');
+    const result = await reports.createReport(reporter, offender, reason);
+    return result;
+}
+
 module.exports = {
     handleIQ,
     handleGame,
@@ -483,5 +553,10 @@ module.exports = {
     handleRoulette,
     handlePoints,
     handleAddPoints,
+    handleJoke,
+    handleFortune,
+    handleTransfer,
+    handleTop,
+    handleReport,
     setCurrentStreamId,
 };

@@ -78,16 +78,72 @@ db.serialize(async () => {
         template TEXT UNIQUE
     )`);
 
+    db.run(`CREATE TABLE IF NOT EXISTS jokes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        text TEXT UNIQUE
+    )`);
+
+    db.run(`CREATE TABLE IF NOT EXISTS fortunes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        text TEXT UNIQUE
+    )`);
+
+    db.run(`CREATE TABLE IF NOT EXISTS bans (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT,
+        reason TEXT,
+        banned_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        banned_until DATETIME,
+        is_active BOOLEAN DEFAULT 1,
+        UNIQUE(username, banned_at)
+    )`);
+
+    db.run(`CREATE TABLE IF NOT EXISTS daily_bonus (
+        username TEXT PRIMARY KEY,
+        last_bonus DATE DEFAULT CURRENT_DATE
+    )`);
+
+    db.run(`CREATE TABLE IF NOT EXISTS daily_fortune (
+        username TEXT PRIMARY KEY,
+        last_fortune DATE DEFAULT CURRENT_DATE
+    )`);
+
+    db.run(`CREATE TABLE IF NOT EXISTS duels (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        challenger TEXT,
+        opponent TEXT,
+        amount INTEGER,
+        status TEXT DEFAULT 'pending',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        expires_at DATETIME
+    )`);
+
+    db.run(`CREATE TABLE IF NOT EXISTS reports (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        reporter TEXT,
+        offender TEXT,
+        reason TEXT,
+        status TEXT DEFAULT 'pending',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`);
+
+    db.run(`CREATE TABLE IF NOT EXISTS unban_requests (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ban_id INTEGER,
+        message_id TEXT,
+        status TEXT DEFAULT 'pending',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(ban_id) REFERENCES bans(id)
+    )`);
+
     try {
         const hasIq = await columnExists('user_iq', 'iq');
         if (!hasIq) {
             db.run("ALTER TABLE user_iq ADD COLUMN iq INTEGER");
-            console.log('✅ Добавлена колонка iq в таблицу user_iq');
         }
         const hasUpdatedAt = await columnExists('user_iq', 'updated_at');
         if (!hasUpdatedAt) {
             db.run("ALTER TABLE user_iq ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP");
-            console.log('✅ Добавлена колонка updated_at в таблицу user_iq');
         }
     } catch (err) {
         console.error('Ошибка при проверке структуры БД:', err);
@@ -351,6 +407,19 @@ function getTopWarns(limit) {
     });
 }
 
+function getTopBans(limit) {
+    return new Promise((resolve, reject) => {
+        db.all(
+            `SELECT username, COUNT(*) as bans FROM bans WHERE is_active = 1 GROUP BY username ORDER BY bans DESC LIMIT ?`,
+            [limit],
+            (err, rows) => {
+                if (err) reject(err);
+                else resolve(rows);
+            }
+        );
+    });
+}
+
 function getUserWarns(username) {
     return new Promise((resolve, reject) => {
         db.get('SELECT COUNT(*) as warns FROM violations WHERE username = ?', [username], (err, row) => {
@@ -360,6 +429,194 @@ function getUserWarns(username) {
     });
 }
 
+function getRandomJoke() {
+    return new Promise((resolve, reject) => {
+        db.get('SELECT text FROM jokes ORDER BY RANDOM() LIMIT 1', (err, row) => {
+            if (err) reject(err);
+            else resolve(row ? row.text : null);
+        });
+    });
+}
+
+function addJoke(text) {
+    return new Promise((resolve, reject) => {
+        db.run('INSERT OR IGNORE INTO jokes (text) VALUES (?)', [text], function (err) {
+            if (err) reject(err);
+            else resolve(this.changes > 0);
+        });
+    });
+}
+
+function getRandomFortune() {
+    return new Promise((resolve, reject) => {
+        db.get('SELECT text FROM fortunes ORDER BY RANDOM() LIMIT 1', (err, row) => {
+            if (err) reject(err);
+            else resolve(row ? row.text : null);
+        });
+    });
+}
+
+function addFortune(text) {
+    return new Promise((resolve, reject) => {
+        db.run('INSERT OR IGNORE INTO fortunes (text) VALUES (?)', [text], function (err) {
+            if (err) reject(err);
+            else resolve(this.changes > 0);
+        });
+    });
+}
+
+function checkDailyBonus(username) {
+    return new Promise((resolve, reject) => {
+        db.get('SELECT last_bonus FROM daily_bonus WHERE username = ?', [username], (err, row) => {
+            if (err) return reject(err);
+            const today = new Date().toISOString().split('T')[0];
+            if (!row || row.last_bonus !== today) {
+                db.run(
+                    'INSERT OR REPLACE INTO daily_bonus (username, last_bonus) VALUES (?, ?)',
+                    [username, today],
+                    function (err2) {
+                        if (err2) reject(err2);
+                        else resolve(true);
+                    }
+                );
+            } else {
+                resolve(false);
+            }
+        });
+    });
+}
+
+function checkDailyFortune(username) {
+    return new Promise((resolve, reject) => {
+        db.get('SELECT last_fortune FROM daily_fortune WHERE username = ?', [username], (err, row) => {
+            if (err) return reject(err);
+            const today = new Date().toISOString().split('T')[0];
+            if (!row || row.last_fortune !== today) {
+                db.run(
+                    'INSERT OR REPLACE INTO daily_fortune (username, last_fortune) VALUES (?, ?)',
+                    [username, today],
+                    function (err2) {
+                        if (err2) reject(err2);
+                        else resolve(true);
+                    }
+                );
+            } else {
+                resolve(false);
+            }
+        });
+    });
+}
+
+function createBan(username, reason, durationDays = null) {
+    return new Promise((resolve, reject) => {
+        const bannedUntil = durationDays ? new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000) : null;
+        db.run(
+            'INSERT INTO bans (username, reason, banned_until, is_active) VALUES (?, ?, ?, 1)',
+            [username, reason, bannedUntil ? bannedUntil.toISOString() : null],
+            function (err) {
+                if (err) reject(err);
+                else resolve(this.lastID);
+            }
+        );
+    });
+}
+
+function unbanUser(username) {
+    return new Promise((resolve, reject) => {
+        db.run('UPDATE bans SET is_active = 0 WHERE username = ? AND is_active = 1', [username], function (err) {
+            if (err) reject(err);
+            else resolve(this.changes > 0);
+        });
+    });
+}
+
+function getExpiredBans() {
+    return new Promise((resolve, reject) => {
+        const now = new Date().toISOString();
+        db.all(
+            'SELECT * FROM bans WHERE is_active = 1 AND banned_until IS NOT NULL AND banned_until <= ?',
+            [now],
+            (err, rows) => {
+                if (err) reject(err);
+                else resolve(rows);
+            }
+        );
+    });
+}
+
+function createUnbanRequest(banId, messageId) {
+    return new Promise((resolve, reject) => {
+        db.run(
+            'INSERT INTO unban_requests (ban_id, message_id) VALUES (?, ?)',
+            [banId, messageId],
+            function (err) {
+                if (err) reject(err);
+                else resolve(this.lastID);
+            }
+        );
+    });
+}
+
+function resolveUnbanRequest(messageId, status) {
+    return new Promise((resolve, reject) => {
+        db.run(
+            'UPDATE unban_requests SET status = ? WHERE message_id = ?',
+            [status, messageId],
+            function (err) {
+                if (err) reject(err);
+                else resolve();
+            }
+        );
+    });
+}
+
+function createReport(reporter, offender, reason) {
+    return new Promise((resolve, reject) => {
+        db.run(
+            'INSERT INTO reports (reporter, offender, reason) VALUES (?, ?, ?)',
+            [reporter, offender, reason],
+            function (err) {
+                if (err) reject(err);
+                else resolve(this.lastID);
+            }
+        );
+    });
+}
+
+function createDuel(challenger, opponent, amount, expiresAt) {
+    return new Promise((resolve, reject) => {
+        db.run(
+            'INSERT INTO duels (challenger, opponent, amount, expires_at) VALUES (?, ?, ?, ?)',
+            [challenger, opponent, amount, expiresAt.toISOString()],
+            function (err) {
+                if (err) reject(err);
+                else resolve(this.lastID);
+            }
+        );
+    });
+}
+
+function getPendingDuelByOpponent(opponent) {
+    return new Promise((resolve, reject) => {
+        db.get(
+            'SELECT * FROM duels WHERE opponent = ? AND status = "pending" AND expires_at > CURRENT_TIMESTAMP',
+            [opponent],
+            (err, row) => {
+                if (err) reject(err);
+                else resolve(row);
+            }
+        );
+    });
+}
+
+function updateDuelStatus(duelId, status) {
+    return new Promise((resolve, reject) => {
+        db.run('UPDATE duels SET status = ? WHERE id = ?', [status, duelId], function (err) {
+            if (err) reject(err);
+            else resolve();
+        });
+    });
+}
 
 module.exports = {
     getUserIQ,
@@ -384,5 +641,21 @@ module.exports = {
     getTopPoints,
     getTopIQ,
     getTopWarns,
+    getTopBans,
     getUserWarns,
+    getRandomJoke,
+    addJoke,
+    getRandomFortune,
+    addFortune,
+    checkDailyBonus,
+    checkDailyFortune,
+    createBan,
+    unbanUser,
+    getExpiredBans,
+    createUnbanRequest,
+    resolveUnbanRequest,
+    createReport,
+    createDuel,
+    getPendingDuelByOpponent,
+    updateDuelStatus,
 };

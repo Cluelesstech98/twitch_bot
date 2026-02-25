@@ -1,11 +1,12 @@
 const { forbiddenWords, wordTimeoutMap } = require('./bannedWords');
 const { timeoutUser, banUser } = require('../services/api');
+const database = require('../services/database');
 
 const spamCache = new Map();
 const warnCache = new Map();
 const capsWarnCache = new Map();
 
-const BOT_NAMES = [                                         // лучше удалить лишних
+const BOT_NAMES = [                                 // лишних убрать
     'streamelements', 'nightbot', 'moobot', 'wizebot',
     'deepbot', 'streamlabs', 'fossabot'
 ];
@@ -33,10 +34,10 @@ function checkCaps(message, username) {
         const warnings = capsWarnCache.get(username) || 0;
         if (warnings === 0) {
             capsWarnCache.set(username, 1);
-            return { timeout: false, warning: `@${username}, не капси, я дурак, могу и забанить` };
+            return { timeout: false, warning: `@${username}, убери капс, пожалуйста.` };
         } else {
             capsWarnCache.delete(username);
-            return { timeout: true, duration: 600, reason: 'А я предупреждал' };
+            return { timeout: true, duration: 600, reason: 'Капс (повторное предупреждение)' };
         }
     }
     return null;
@@ -53,7 +54,7 @@ async function checkSpam(username, message) {
         } else {
             userData.lastTime = now;
             spamCache.set(username, userData);
-            return { timeout: false, warning: `Повторение - мать учения, но ты не наглей @${username}` };
+            return { timeout: false, warning: `Повторение - мать учения, но ты тоже не наглей @${username}` };
         }
     } else {
         spamCache.set(username, { lastMessage: message, count: 1, lastTime: now });
@@ -100,7 +101,24 @@ async function handleBan(client, channel, username, reason) {
         throw error;
     }
     const channelName = channel.startsWith('#') ? channel.slice(1) : channel;
-    await banUser(channelName, username, reason);
+    try {
+        await banUser(channelName, username, reason);
+        await database.createBan(username, reason, 30); 
+    } catch (error) {
+        throw error;
+    }
+}
+
+async function handleUnban(client, channel, username) {
+    const channelName = channel.startsWith('#') ? channel.slice(1) : channel;
+    try {
+        await client.unban(channelName, username);
+        await database.unbanUser(username);
+        return `@${username} разбанен.`;
+    } catch (error) {
+        console.error('Ошибка разбана:', error);
+        return `Не удалось разбанить @${username}.`;
+    }
 }
 
 function handleWarn(username) {
@@ -109,7 +127,7 @@ function handleWarn(username) {
     if (warnings === 1) return { type: 'message', text: `ч Аккуратнее с выражениями, пожалуйста @${username}` };
     if (warnings === 2) return { type: 'message', text: `ч Повторяю последний раз, без глупостей @${username}` };
     warnCache.delete(username);
-    return { type: 'timeout', duration: 600, reason: 'А я предупреждал' };
+    return { type: 'timeout', duration: 600, reason: 'Превышение предупреждений' };
 }
 
 module.exports = {
@@ -119,5 +137,6 @@ module.exports = {
     checkSpam,
     handleTimeout,
     handleBan,
+    handleUnban,
     handleWarn,
 };

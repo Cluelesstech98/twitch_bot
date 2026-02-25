@@ -1,7 +1,7 @@
 {
   "name": "twitch-bot",
-  "version": "1.2.0",
-  "description": "Twitch чат-бот с модерацией и интерактивом",
+  "version": "1.2.2",
+  "description": "Twitch чат-бот",
   "main": "src/bot.js",
   "scripts": {
     "start": "node src/bot.js",

@@ -8,6 +8,10 @@ const moderation = require('./commands/moderation');
 const interactive = require('./commands/interactive');
 const aliases = require('./commands/aliases');
 const proverbs = require('./services/proverbs');
+const jokes = require('./services/jokes');
+const fortunes = require('./services/fortunes');
+const DuelManager = require('./services/duels');
+const UnbanManager = require('./services/unban');
 const { startApiServer } = require('./api/server');
 
 const requiredEnv = ['ACCESS_TOKEN', 'BOT_USERNAME', 'CHANNEL_NAME', 'CLIENT_ID', 'API_KEY'];
@@ -50,6 +54,8 @@ class TwitchBot {
 
         this.client = new tmi.Client(this.config);
         this.greetingSent = false;
+        this.duelManager = new DuelManager(this.client, this.safeSay.bind(this));
+        this.unbanManager = new UnbanManager(this.client, this.safeSay.bind(this), process.env.CHANNEL_NAME);
         this.setupEventHandlers();
     }
 
@@ -59,12 +65,19 @@ class TwitchBot {
             console.log(`✅ Бот подключен к ${addr}:${port}`);
             if (!this.greetingSent) {
                 const message = buildMessage();
-                console.log(`📨 Приветствие готово к отправке (длина ${message.length})`);
+                console.log(`📨 Отправляем пасхалку, хехе`);
                 this.safeSay(this.config.channels[0], message);
                 this.greetingSent = true;
             }
+            proverbs.initProverbs().catch(console.error);
+            jokes.initJokes().catch(console.error);
+            fortunes.initFortunes().catch(console.error);
+            this.unbanManager.start();
         });
-        this.client.on('disconnected', reason => console.warn(`⚠️ Бот отключен: ${reason}`));
+        this.client.on('disconnected', reason => {
+            console.warn(`⚠️ Бот отключен: ${reason}`);
+            this.unbanManager.stop();
+        });
         this.client.on('login_failure', () => {
             console.error('❌ Ошибка аутентификации. Проверьте ACCESS_TOKEN в .env');
             process.exit(1);
@@ -96,10 +109,10 @@ class TwitchBot {
                 }
             } catch (error) {
                 if (error.code === 'BOT_MODERATION') {
-                    await this.safeSay(channel, `⚠️ Ботов не баню ${target}.`);
+                    await this.safeSay(channel, `⚠️ Нельзя применить модерацию к боту ${target}.`);
                 } else {
                     console.error(`Ошибка в команде warn для ${target}:`, error);
-                    await this.safeSay(channel, `⚠️ Ошибка, чиркнул в консоль`);
+                    await this.safeSay(channel, `⚠️ Произошла ошибка. Подробности в консоли.`);
                 }
             }
         },
@@ -112,7 +125,7 @@ class TwitchBot {
                 await this.safeSay(channel, `тревога Выдан таймаут @${target} на ${duration} сек. Причина: Нарушение правил`);
             } catch (error) {
                 if (error.code === 'BOT_MODERATION') {
-                    await this.safeSay(channel, `⚠️ Ботов не таймлю ${target}.`);
+                    await this.safeSay(channel, `⚠️ Нельзя затаймить бота ${target}.`);
                 } else {
                     console.error(`Ошибка в команде timeout для ${target}:`, error);
                     await this.safeSay(channel, `⚠️ Не удалось затаймить ${target}.`);
@@ -122,10 +135,10 @@ class TwitchBot {
         ban: async (channel, args) => {
             const target = args[0]?.replace('@', '');
             if (!target) return;
-            const reason = args.length > 1 ? args.slice(1).join(' ') : 'Пермач';
+            const reason = args.length > 1 ? args.slice(1).join(' ') : 'Перманентный бан';
             try {
                 await moderation.handleBan(this.client, channel, target, reason);
-                await this.safeSay(channel, `тревога Выдан бан @${target}. Причина: ${reason}`);
+                await this.safeSay(channel, `🔨 Выдан бан @${target}. Причина: ${reason}`);
             } catch (error) {
                 if (error.code === 'BOT_MODERATION') {
                     await this.safeSay(channel, `⚠️ Нельзя забанить бота ${target}.`);
@@ -134,6 +147,12 @@ class TwitchBot {
                     await this.safeSay(channel, `Не удалось забанить @${target}.`);
                 }
             }
+        },
+        unban: async (channel, args) => {
+            const target = args[0]?.replace('@', '');
+            if (!target) return;
+            const result = await moderation.handleUnban(this.client, channel, target);
+            await this.safeSay(channel, result);
         },
     };
 
@@ -234,14 +253,52 @@ class TwitchBot {
             const response = await interactive.handleAddPoints(args, username, isBroadcaster, isMod);
             await this.safeSay(channel, response);
         },
+        joke: async (channel, args, username) => {
+            const response = await interactive.handleJoke();
+            await this.safeSay(channel, response);
+        },
+        fortune: async (channel, args, username) => {
+            const response = await interactive.handleFortune(username);
+            await this.safeSay(channel, response);
+        },
+        duel: async (channel, args, username) => {
+            if (args.length < 2) return await this.safeSay(channel, `@${username} укажите соперника и ставку. Пример: !дуэль @ник 100`);
+            const opponent = args[0].replace('@', '');
+            const amount = parseInt(args[1]);
+            if (isNaN(amount) || amount <= 0) return await this.safeSay(channel, `@${username} укажите корректную ставку.`);
+            const result = await this.duelManager.createDuel(username, opponent, amount, channel);
+            if (result) await this.safeSay(channel, result);
+        },
+        acceptduel: async (channel, args, username) => {
+            const result = await this.duelManager.acceptDuel(username, channel);
+            await this.safeSay(channel, result);
+        },
+        declineduel: async (channel, args, username) => {
+            const result = await this.duelManager.declineDuel(username, channel);
+            await this.safeSay(channel, result);
+        },
+        report: async (channel, args, username) => {
+            const response = await interactive.handleReport(args, username);
+            await this.safeSay(channel, response);
+        },
+        transfer: async (channel, args, username) => {
+            const response = await interactive.handleTransfer(args, username);
+            await this.safeSay(channel, response);
+        },
+        top: async (channel, args, username) => {
+            const response = await interactive.handleTop(args);
+            await this.safeSay(channel, response);
+        },
     };
 
-    async safeSay(channel, message) {
+    async safeSay(channel, message, returnMsg = false) {
         try {
-            await this.client.say(channel, message);
+            const msg = await this.client.say(channel, message);
+            if (returnMsg) return msg;
         } catch (error) {
             console.error(`Ошибка отправки сообщения в ${channel}:`, error);
         }
+        return null;
     }
 
     async onMessage(channel, tags, message, self) {
@@ -250,8 +307,32 @@ class TwitchBot {
         const { username, mod, badges } = tags;
         const isBroadcaster = badges?.broadcaster === '1';
         const isMod = mod || isBroadcaster;
+        const isVIP = badges?.vip === '1';
 
         console.log(`[${new Date().toLocaleTimeString()}] ${username}: ${message}`);
+
+        if (!isMod && !isBroadcaster && !isVIP) {
+            const urlRegex = /(https?:\/\/[^\s]+)|(www\.[^\s]+)|([a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\/[^\s]*)/i;
+            if (urlRegex.test(message)) {
+                try {
+                    await this.client.deletemessage(channel, tags.id);
+                    await this.safeSay(channel, `@${username}, ссылки запрещены.`);
+                } catch (err) {
+                    console.error('Не удалось удалить сообщение со ссылкой:', err);
+                }
+                return;
+            }
+        }
+
+        const messageLower = message.toLowerCase();
+        const words = messageLower.split(/\s+/);
+        if (words.includes('когда') && !message.startsWith('!')) {
+            console.log(`✅ Обнаружено "когда" от ${username}: "${message}"`);
+            const answers = ['Потом', 'Завтра'];
+            const answer = answers[Math.floor(Math.random() * answers.length)];
+            await this.safeSay(channel, `@${username}, ${answer}`);
+            return;
+        }
 
         if (!message.startsWith('!')) {
             await this.runAutoModeration(channel, tags, message, username);
@@ -329,8 +410,9 @@ bot.connect();
 
 process.on('SIGINT', async () => {
     console.log('\n🛑 Завершаем...');
+    bot.unbanManager.stop();
     await bot.client.disconnect();
-    console.log('✅ Бот отключён');
+    console.log('✅ Завершили!');
     process.exit(0);
 });
 
