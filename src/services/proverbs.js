@@ -1,4 +1,4 @@
-const database = require('./database'); // тестовая функция, требует дополнения, следует проспрягать
+const database = require('./database'); // тестовая функция, требует дополнения
 
 const defaultTemplates = [
     'Семь раз {word}, один раз Антон',

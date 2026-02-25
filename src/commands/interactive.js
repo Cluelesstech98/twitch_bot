@@ -25,7 +25,7 @@ const BACKUP_CHANNEL_CREATION_DATE = process.env.BACKUP_CHANNEL_CREATION_DATE;
 const giftBanCache = new NodeCache({ stdTTL: 60 });
 const giftReceivedCache = new NodeCache({ stdTTL: 60 * 60 * 12 });
 
-const textGifts = [
+const textGifts = [                                        // подарки следует поменять под тематику канала
     'сегодня без подарка Chel ',
     'семь подарков на неделе ох ',
     'лови печеньку дада ',
@@ -42,19 +42,11 @@ async function handleIQ(username) {
     try {
         const oldIQ = await database.getUserIQ(username);
         const newIQ = Math.floor(Math.random() * 250) + 1;
-<<<<<<< HEAD
-=======
-
->>>>>>> da2e31c741f414d5cf84f1e811131bbbe9b750d8
         let message = `Ваш IQ = ${newIQ}`;
         if (oldIQ !== null && oldIQ !== undefined) {
             const diff = newIQ - oldIQ;
             message += ` (${diff >= 0 ? '+' : ''}${diff})`;
         }
-<<<<<<< HEAD
-=======
-
->>>>>>> da2e31c741f414d5cf84f1e811131bbbe9b750d8
         await database.updateUserIQ(username, newIQ);
         await points.awardActivityPoints(username);
         return message;
@@ -68,18 +60,10 @@ async function handleGame() {
     try {
         const currentGame = await getCurrentGame(CHANNEL_NAME);
         if (!currentGame) return 'Сейчас стрим не в эфире';
-<<<<<<< HEAD
-=======
-
->>>>>>> da2e31c741f414d5cf84f1e811131bbbe9b750d8
         const lowerGame = currentGame.toLowerCase();
         if (lowerGame.includes('just chatting') || lowerGame.includes('общение')) {
             return 'Пока не играем';
         }
-<<<<<<< HEAD
-=======
-
->>>>>>> da2e31c741f414d5cf84f1e811131bbbe9b750d8
         return `Сейчас играем в ${currentGame}`;
     } catch (error) {
         console.error('Ошибка в handleGame:', error);
@@ -90,10 +74,6 @@ async function handleGame() {
 async function handleFollowage(tags, isBroadcaster) {
     try {
         const username = tags.username;
-<<<<<<< HEAD
-=======
-
->>>>>>> da2e31c741f414d5cf84f1e811131bbbe9b750d8
         if (isBroadcaster) {
             let creationDate;
             try {
@@ -111,48 +91,36 @@ async function handleFollowage(tags, isBroadcaster) {
 
         const channelResponse = await axios.get(
             `https://api.twitch.tv/helix/users?login=${CHANNEL_NAME}`,
-<<<<<<< HEAD
-            { headers: { 'Client-ID': CLIENT_ID, Authorization: `Bearer ${ACCESS_TOKEN}` } }
-=======
             {
                 headers: {
                     'Client-ID': CLIENT_ID,
                     Authorization: `Bearer ${ACCESS_TOKEN}`,
                 },
             }
->>>>>>> da2e31c741f414d5cf84f1e811131bbbe9b750d8
         );
         if (!channelResponse.data.data.length) return 'Канал не найден';
         const broadcasterId = channelResponse.data.data[0].id;
 
         const userResponse = await axios.get(
             `https://api.twitch.tv/helix/users?login=${username}`,
-<<<<<<< HEAD
-            { headers: { 'Client-ID': CLIENT_ID, Authorization: `Bearer ${ACCESS_TOKEN}` } }
-=======
             {
                 headers: {
                     'Client-ID': CLIENT_ID,
                     Authorization: `Bearer ${ACCESS_TOKEN}`,
                 },
             }
->>>>>>> da2e31c741f414d5cf84f1e811131bbbe9b750d8
         );
         if (!userResponse.data.data.length) return 'Пользователь не найден';
         const userId = userResponse.data.data[0].id;
 
         const followResponse = await axios.get(
             `https://api.twitch.tv/helix/channels/followers?user_id=${userId}&broadcaster_id=${broadcasterId}`,
-<<<<<<< HEAD
-            { headers: { 'Client-ID': CLIENT_ID, Authorization: `Bearer ${ACCESS_TOKEN}` } }
-=======
             {
                 headers: {
                     'Client-ID': CLIENT_ID,
                     Authorization: `Bearer ${ACCESS_TOKEN}`,
                 },
             }
->>>>>>> da2e31c741f414d5cf84f1e811131bbbe9b750d8
         );
         if (!followResponse.data.data.length) return 'Вы точно подписаны?';
 
@@ -170,16 +138,12 @@ async function handleCategories(channelName) {
     try {
         const streamResponse = await axios.get(
             `https://api.twitch.tv/helix/streams?user_login=${channelName}`,
-<<<<<<< HEAD
-            { headers: { 'Client-ID': CLIENT_ID, Authorization: `Bearer ${ACCESS_TOKEN}` } }
-=======
             {
                 headers: {
                     'Client-ID': CLIENT_ID,
                     Authorization: `Bearer ${ACCESS_TOKEN}`,
                 },
             }
->>>>>>> da2e31c741f414d5cf84f1e811131bbbe9b750d8
         );
         if (!streamResponse.data.data.length) return 'Э, напиши в онлайне';
 
@@ -267,22 +231,6 @@ function handleRules() {
 
 function handleCommands() {
     return `
-<<<<<<< HEAD
-• !iq
-• !игра
-• !подарок
-• !followage
-• !чебыло
-• !7тв
-• !э
-• !тг 
-• !правила
-• !предложение [игра]
-• !голос [игра]
-• !итоги
-• !пословица [слово]
-• !рулетка
-=======
 📋 Доступные команды:
 • !iq 
 • !игра 
@@ -299,7 +247,6 @@ function handleCommands() {
 • !итоги 
 • !пословица [слово] 
 • !рулетка 
->>>>>>> da2e31c741f414d5cf84f1e811131bbbe9b750d8
 • !баллы`;
 }
 
@@ -445,12 +392,6 @@ async function handleVote(args, username) {
 
 async function handleStreamStats() {
     if (!currentStreamId) return 'Стрим не активен или статистика недоступна.';
-<<<<<<< HEAD
-    const votingResults = await voting.getResults(currentStreamId);
-    let votingPart = 'Голосование:\n' + (votingResults || 'Нет голосов');
-    const stats = await database.getStreamStats(currentStreamId);
-    const bansPart = stats ? `Нарушений: ${stats.warns}, банов: ${stats.bans}` : 'Статистика нарушений временно недоступна';
-=======
     
     const votingResults = await voting.getResults(currentStreamId);
     let votingPart = 'Голосование:\n' + (votingResults || 'Нет голосов');
@@ -458,7 +399,6 @@ async function handleStreamStats() {
     const stats = await database.getStreamStats(currentStreamId); 
     const bansPart = stats ? `Нарушений: ${stats.warns}, банов: ${stats.bans}` : 'Статистика нарушений временно недоступна';
     
->>>>>>> da2e31c741f414d5cf84f1e811131bbbe9b750d8
     return `${votingPart}\n\n${bansPart}`;
 }
 
@@ -486,7 +426,6 @@ async function handlePoints(username) {
     return `@${username}, у вас ${userPoints} очков.`;
 }
 
-<<<<<<< HEAD
 async function handleAddPoints(args, invoker, isBroadcaster, isMod) {
     if (!isBroadcaster && !isMod) {
         return `@${invoker}, эта команда доступна только модераторам и стримеру.`;
@@ -522,8 +461,6 @@ async function handleAddPoints(args, invoker, isBroadcaster, isMod) {
     }
 }
 
-=======
->>>>>>> da2e31c741f414d5cf84f1e811131bbbe9b750d8
 module.exports = {
     handleIQ,
     handleGame,
@@ -539,19 +476,12 @@ module.exports = {
     handleGift,
     handleResetGift,
     clearGiftCache,
-<<<<<<< HEAD
-    setCurrentStreamId,
-=======
->>>>>>> da2e31c741f414d5cf84f1e811131bbbe9b750d8
     handleGameProposal,
     handleVote,
     handleStreamStats,
     handleProverb,
     handleRoulette,
     handlePoints,
-<<<<<<< HEAD
     handleAddPoints,
-=======
     setCurrentStreamId,
->>>>>>> da2e31c741f414d5cf84f1e811131bbbe9b750d8
 };
