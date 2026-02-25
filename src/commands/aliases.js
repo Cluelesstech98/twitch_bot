@@ -1,13 +1,16 @@
 module.exports = {
     user: {
         '7тв': '7tv',
+        '7tv': '7tv',
         'пинг': 'ping',
         'э': 'eh',
+        'eh': 'eh',
         'тг': 'tg',
         'правила': 'rules',
         'rules': 'rules',
         'iq': 'iq',
         'айкью': 'iq',
+        'айсикью': 'iq',
         'icq': 'iq',
         'игра': 'game',
         'followage': 'followage',
@@ -27,19 +30,19 @@ module.exports = {
         'рулетка': 'roulette',
         'баллы': 'points',
         'очки': 'points',
-<<<<<<< HEAD
-        'сбросить_подарки': 'resetgift',
-        'сброс_подарков': 'resetgift',
-        '+очки': 'addpoints',
-=======
+        'points': 'points',
         '-подарки': 'resetgift',
         '0подарки': 'resetgift',
->>>>>>> da2e31c741f414d5cf84f1e811131bbbe9b750d8
+        '+очки': 'addpoints',
     },
     mod: {
         'варн': 'warn',
+        'warn': 'warn',
         'timeout': 'timeout',
+        'тайм': 'timeout',
+        'таймаут': 'timeout',
         'бан': 'ban',
         'ban': 'ban',
+        'бах': 'ban',
     },
 };

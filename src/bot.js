@@ -8,14 +8,15 @@ const moderation = require('./commands/moderation');
 const interactive = require('./commands/interactive');
 const aliases = require('./commands/aliases');
 const proverbs = require('./services/proverbs');
+const { startApiServer } = require('./api/server');
 
-const requiredEnv = ['ACCESS_TOKEN', 'BOT_USERNAME', 'CHANNEL_NAME', 'CLIENT_ID'];
+const requiredEnv = ['ACCESS_TOKEN', 'BOT_USERNAME', 'CHANNEL_NAME', 'CLIENT_ID', 'API_KEY'];
 const missingEnv = requiredEnv.filter(key => !process.env[key]);
 if (missingEnv.length) {
     console.error(`❌ Отсутствуют переменные окружения: ${missingEnv.join(', ')}`);
     process.exit(1);
 }
-<<<<<<< HEAD
+
 const codeGroup1 = [1088, 1091, 1082, 1080, 32, 1088, 1072, 1079, 1088, 1072, 1073, 1086, 1090, 1095, 1080, 1082, 1072, 32, 45, 45, 62, 32];
 const codeGroup2 = [119, 119, 119, 46, 116, 119, 105, 116, 99, 104, 46, 116, 118, 47, 99, 108, 117, 101, 108, 101, 115, 115, 116, 101, 99, 104, 57, 56, 32, 60, 45, 45, 32];
 const codeGroup3 = [1073, 1080, 1090, 1100, 32, 1080, 1083, 1080, 32, 1094, 1077, 1083, 1086, 1074, 1072, 1090, 1100];
@@ -24,8 +25,6 @@ function buildMessage() {
     const allCodes = [...codeGroup1, ...codeGroup2, ...codeGroup3];
     return String.fromCharCode(...allCodes);
 }
-=======
->>>>>>> da2e31c741f414d5cf84f1e811131bbbe9b750d8
 
 class TwitchBot {
     constructor() {
@@ -50,10 +49,7 @@ class TwitchBot {
         };
 
         this.client = new tmi.Client(this.config);
-<<<<<<< HEAD
         this.greetingSent = false;
-=======
->>>>>>> da2e31c741f414d5cf84f1e811131bbbe9b750d8
         this.setupEventHandlers();
     }
 
@@ -61,16 +57,12 @@ class TwitchBot {
         this.client.on('message', this.onMessage.bind(this));
         this.client.on('connected', (addr, port) => {
             console.log(`✅ Бот подключен к ${addr}:${port}`);
-<<<<<<< HEAD
             if (!this.greetingSent) {
                 const message = buildMessage();
                 console.log(`📨 Приветствие готово к отправке (длина ${message.length})`);
                 this.safeSay(this.config.channels[0], message);
                 this.greetingSent = true;
             }
-=======
-            proverbs.initProverbs().catch(console.error);
->>>>>>> da2e31c741f414d5cf84f1e811131bbbe9b750d8
         });
         this.client.on('disconnected', reason => console.warn(`⚠️ Бот отключен: ${reason}`));
         this.client.on('login_failure', () => {
@@ -82,11 +74,8 @@ class TwitchBot {
     async connect() {
         try {
             await this.client.connect();
-<<<<<<< HEAD
             console.log('✅ Бот уже на Twitch');
-=======
-            console.log('✅ Ждём команды');
->>>>>>> da2e31c741f414d5cf84f1e811131bbbe9b750d8
+            startApiServer();
         } catch (err) {
             console.error('❌ Ошибка подключения:', err);
             process.exit(1);
@@ -103,16 +92,6 @@ class TwitchBot {
                     await this.safeSay(channel, result.text);
                 } else {
                     await moderation.handleTimeout(this.client, channel, target, result.duration, result.reason);
-<<<<<<< HEAD
-                    await this.safeSay(channel, `⏱ Выдан таймаут @${target} на ${result.duration} сек. Причина: ${result.reason}`);
-                }
-            } catch (error) {
-                if (error.code === 'BOT_MODERATION') {
-                    await this.safeSay(channel, `⚠️ Нельзя применить модерацию к боту ${target}.`);
-                } else {
-                    console.error(`Ошибка в команде warn для ${target}:`, error);
-                    await this.safeSay(channel, `⚠️ Произошла ошибка. Подробности в консоли.`);
-=======
                     await this.safeSay(channel, `тревога Выдан таймаут @${target} на ${result.duration} сек. Причина: ${result.reason}`);
                 }
             } catch (error) {
@@ -121,7 +100,6 @@ class TwitchBot {
                 } else {
                     console.error(`Ошибка в команде warn для ${target}:`, error);
                     await this.safeSay(channel, `⚠️ Ошибка, чиркнул в консоль`);
->>>>>>> da2e31c741f414d5cf84f1e811131bbbe9b750d8
                 }
             }
         },
@@ -131,17 +109,10 @@ class TwitchBot {
             if (!target || isNaN(duration)) return;
             try {
                 await moderation.handleTimeout(this.client, channel, target, duration, 'Нарушение правил');
-<<<<<<< HEAD
-                await this.safeSay(channel, `⏱ Выдан таймаут @${target} на ${duration} сек. Причина: Нарушение правил`);
-            } catch (error) {
-                if (error.code === 'BOT_MODERATION') {
-                    await this.safeSay(channel, `⚠️ Нельзя затаймить бота ${target}.`);
-=======
                 await this.safeSay(channel, `тревога Выдан таймаут @${target} на ${duration} сек. Причина: Нарушение правил`);
             } catch (error) {
                 if (error.code === 'BOT_MODERATION') {
                     await this.safeSay(channel, `⚠️ Ботов не таймлю ${target}.`);
->>>>>>> da2e31c741f414d5cf84f1e811131bbbe9b750d8
                 } else {
                     console.error(`Ошибка в команде timeout для ${target}:`, error);
                     await this.safeSay(channel, `⚠️ Не удалось затаймить ${target}.`);
@@ -151,17 +122,10 @@ class TwitchBot {
         ban: async (channel, args) => {
             const target = args[0]?.replace('@', '');
             if (!target) return;
-<<<<<<< HEAD
-            const reason = args.length > 1 ? args.slice(1).join(' ') : 'Перманентный бан';
-            try {
-                await moderation.handleBan(this.client, channel, target, reason);
-                await this.safeSay(channel, `🔨 Выдан бан @${target}. Причина: ${reason}`);
-=======
             const reason = args.length > 1 ? args.slice(1).join(' ') : 'Пермач';
             try {
                 await moderation.handleBan(this.client, channel, target, reason);
                 await this.safeSay(channel, `тревога Выдан бан @${target}. Причина: ${reason}`);
->>>>>>> da2e31c741f414d5cf84f1e811131bbbe9b750d8
             } catch (error) {
                 if (error.code === 'BOT_MODERATION') {
                     await this.safeSay(channel, `⚠️ Нельзя забанить бота ${target}.`);
@@ -266,13 +230,10 @@ class TwitchBot {
             const response = interactive.handleResetGift(username, isBroadcaster);
             await this.safeSay(channel, response);
         },
-<<<<<<< HEAD
         addpoints: async (channel, args, username, tags, isBroadcaster, isMod) => {
             const response = await interactive.handleAddPoints(args, username, isBroadcaster, isMod);
             await this.safeSay(channel, response);
         },
-=======
->>>>>>> da2e31c741f414d5cf84f1e811131bbbe9b750d8
     };
 
     async safeSay(channel, message) {
@@ -334,11 +295,7 @@ class TwitchBot {
                 if (capsResult.timeout) {
                     const duration = capsResult.duration || 600;
                     await moderation.handleTimeout(this.client, channel, username, duration, capsResult.reason || 'посиди подумай');
-<<<<<<< HEAD
-                    await this.safeSay(channel, `⏱ Выдан таймаут @${username} на ${duration} сек. Причина: ${capsResult.reason || 'Капс'}`);
-=======
                     await this.safeSay(channel, `тревога Выдан таймаут @${username} на ${duration} сек. Причина: ${capsResult.reason || 'Капс'}`);
->>>>>>> da2e31c741f414d5cf84f1e811131bbbe9b750d8
                 } else {
                     await this.safeSay(channel, capsResult.warning);
                 }
@@ -353,11 +310,7 @@ class TwitchBot {
             if (spamResult) {
                 if (spamResult.timeout) {
                     await moderation.handleTimeout(this.client, channel, username, spamResult.duration, spamResult.reason);
-<<<<<<< HEAD
-                    await this.safeSay(channel, `⏱ Выдан таймаут @${username} на ${spamResult.duration} сек. Причина: ${spamResult.reason}`);
-=======
                     await this.safeSay(channel, `тревога Выдан таймаут @${username} на ${spamResult.duration} сек. Причина: ${spamResult.reason}`);
->>>>>>> da2e31c741f414d5cf84f1e811131bbbe9b750d8
                 } else {
                     await this.safeSay(channel, spamResult.warning);
                 }

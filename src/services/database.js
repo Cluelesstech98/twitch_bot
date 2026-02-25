@@ -320,6 +320,47 @@ function getStreamStats(streamId) {
     return Promise.resolve(null);
 }
 
+function getTopPoints(limit) {
+    return new Promise((resolve, reject) => {
+        db.all('SELECT username, points FROM bot_points ORDER BY points DESC LIMIT ?', [limit], (err, rows) => {
+            if (err) reject(err);
+            else resolve(rows);
+        });
+    });
+}
+
+function getTopIQ(limit) {
+    return new Promise((resolve, reject) => {
+        db.all('SELECT username, iq FROM user_iq ORDER BY iq DESC LIMIT ?', [limit], (err, rows) => {
+            if (err) reject(err);
+            else resolve(rows);
+        });
+    });
+}
+
+function getTopWarns(limit) {
+    return new Promise((resolve, reject) => {
+        db.all(
+            `SELECT username, COUNT(*) as warns FROM violations GROUP BY username ORDER BY warns DESC LIMIT ?`,
+            [limit],
+            (err, rows) => {
+                if (err) reject(err);
+                else resolve(rows);
+            }
+        );
+    });
+}
+
+function getUserWarns(username) {
+    return new Promise((resolve, reject) => {
+        db.get('SELECT COUNT(*) as warns FROM violations WHERE username = ?', [username], (err, row) => {
+            if (err) reject(err);
+            else resolve(row ? row.warns : 0);
+        });
+    });
+}
+
+
 module.exports = {
     getUserIQ,
     updateUserIQ,
@@ -340,4 +381,8 @@ module.exports = {
     getRandomProverb,
     addProverb,
     getStreamStats,
+    getTopPoints,
+    getTopIQ,
+    getTopWarns,
+    getUserWarns,
 };
